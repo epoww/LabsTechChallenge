@@ -21,7 +21,7 @@ class DiningTableViewCell : UITableViewCell {
 
         img_v = UIcreator.createImageView()
         status_lb = UIcreator.createLabel(x: Int(img_v.frame.maxX + 14), y: 25, width: 200, height: 15, fontName: "Arial-BoldMT", fontSize: 14, textColor: UIColor.black)
-        name_lb = UIcreator.createLabel(x: Int(status_lb.frame.minX), y: 41, width: Int(WIDTH - 28 - img_v.frame.width), height: 25, fontName: "Arial", fontSize: 20, textColor: UIColor.black)
+        name_lb = UIcreator.createLabel(x: Int(status_lb.frame.minX), y: 41, width: Int(WIDTH - 50 - img_v.frame.width), height: 25, fontName: "Arial", fontSize: 20, textColor: UIColor.black)
         name_lb.adjustsFontSizeToFitWidth = true
         hours_lb = UIcreator.createLabel(x: Int(status_lb.frame.minX), y: 68, width: 200, height: 15, fontName: "Avenir-Light", fontSize: 14, textColor: UIColor.black)
         let arrow_lb = UIcreator.createLabel(x: Int(WIDTH - 20), y: Int(WIDTH * 0.32 / 3), width: 20, height: 20, fontName: "Ariel-BoldMT", fontSize: 60, textColor: UIColor.black)
