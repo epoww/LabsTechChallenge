@@ -14,9 +14,11 @@ var WIDTH : CGFloat!
 
 class ViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
     
-    var helper = Helper()
-    var networkManager = NetworkManager()
+    var helper = Helper() // helper that can access helper functions, mainly date and formatting ones
+    var networkManager = NetworkManager() // network manager takes care of url calls
+    var UIcreator = Creator() // UI creator has can access functions to make the UI
     
+    // a list of residential dining halls (swipes), whenever updated should reload the tableview data
     var DiningHalls = [DiningPlace]() {
         didSet {
             DispatchQueue.main.async {
@@ -25,6 +27,7 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
         }
     }
     
+    // a list of retail dining halls (dining dollars), whenever updated should reload the tableview data
     var RetailDining = [DiningPlace]() {
         didSet {
             DispatchQueue.main.async {
@@ -33,15 +36,18 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
         }
     }
     
+    // handles closing the webView
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         activityIndicator.stopAnimating()
         activityIndicator.removeFromSuperview()
     }
     
+    // table view has 2 sections, one for residential dining halls and one for retail dining halls
     func numberOfSections(in tableView: UITableView) -> Int {
         return 2
     }
     
+    // section 0 -> residential dining halls, section 1 -> retail dining halls
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         if section == 0 { return DiningHalls.count }
         return RetailDining.count
@@ -50,16 +56,18 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
         let section = indexPath.section
-        let diningHall: DiningPlace!
         
+        // get dining place object for this cell
+        let diningHall: DiningPlace!
         if section == 0 { diningHall = DiningHalls[indexPath.item] }
         else { diningHall = RetailDining[indexPath.item] }
         
+        // display dining hall name and place holder gray background
         let cell = tableView.dequeueReusableCell(withIdentifier: "dining cell") as! DiningTableViewCell
-        
         cell.name_lb.text = diningHall.name
         cell.img_v.backgroundColor = UIColor.lightGray
         
+        // asynchronously display dining hall image
         if let url = URL(string: diningHall.imageURL) {
             networkManager.getImage(url: url, completionHandler: {
                 image in
@@ -69,14 +77,17 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
             })
         }
         
+        // display dining hall hours
         var hours = ""
         var open = false
         (hours, open) = diningHall.getHours(helper: helper)
         cell.hours_lb.text = hours
         
+        // display dining hall status (open or closed)
         if open {
             cell.status_lb.text = "OPEN"
-            cell.status_lb.textColor = UIColor.azure }
+            cell.status_lb.textColor = UIColor.azure
+        }
         else {
             cell.status_lb.text = "CLOSED"
             cell.status_lb.textColor = UIColor.greyish
@@ -90,27 +101,16 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
     }
     
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
-        
-        let header_v = UIView()
-        header_v.frame = CGRect(x: 0, y: 0, width: WIDTH, height: 54)
-        header_v.backgroundColor = UIColor.white
-        
-        let title_lb = UILabel()
-        title_lb.frame = CGRect(x: 14, y: 7, width: 200, height: 40)
-        title_lb.font = UIFont(name: "Arial-BoldMT", size: 30)
-        
-        header_v.addSubview(title_lb)
-        
-        if section == 0 { title_lb.text = "Dining Halls" }
-        else { title_lb.text = "Retail Dining" }
-        
-        return header_v
+        return UIcreator.createHeaderView(section: section)
     }
     
     func tableView(_ tableView: UITableView, estimatedHeightForHeaderInSection section: Int) -> CGFloat {
         return 54
     }
     
+    // when a cell is selected, open webview and go to the dining hall's facility url
+    // run activity indicator while the page loads
+    var selectedIndexPath = IndexPath()
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let section = indexPath.section
         let url: URL!
@@ -136,13 +136,42 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
         
     }
     
-    let tbv = UITableView()
-    let webv = WKWebView()
-    let date_lb = UILabel()
-    var activityIndicator = UIActivityIndicatorView()
-    var close_btn = UIButton()
-    var selectedIndexPath = IndexPath()
+    var tbv: UITableView!
+    var webv: WKWebView!
+    var date_lb: UILabel!
+    var activityIndicator: UIActivityIndicatorView!
+    var close_btn: UIButton!
+    // sets up the main page's UI
+    func setUpUI() {
+        tbv = UIcreator.tbvCreator()
+        date_lb = UIcreator.createLabel(x: 14, y: 63, width: 200, height: 15, fontName: "Arial-BoldMT", fontSize: 12, textColor: UIColor.greyishTwo)
+        webv = UIcreator.webVCreator()
+        activityIndicator = UIcreator.createActivityIndicator()
+        close_btn = UIcreator.createCloseWebViewButton()
+        
+        tbv.dataSource = self
+        tbv.delegate = self
+        activityIndicator.center = self.view.center
+        close_btn.addTarget(self, action: #selector(closeWebView), for: .touchUpInside)
+
+        self.view.addSubview(tbv)
+        self.view.addSubview(date_lb)
+    }
     
+    // function called when user closes the webview
+    @objc func closeWebView() {
+        close_btn.removeFromSuperview()
+        webv.removeFromSuperview()
+        webv.load(URLRequest(url: URL(string:"about:blank")!))
+        activityIndicator.stopAnimating()
+        tbv.deselectRow(at: selectedIndexPath, animated: true)
+        UIView.animate(withDuration: 0.3) {
+            self.webv.alpha = 0
+            self.close_btn.alpha = 0
+        }
+    }
+    
+    // each time the user views the app, it should update the times and status of dining halls
     override func viewWillAppear(_ animated: Bool) {
         date_lb.text = helper.getDateWithDay()
         
@@ -160,62 +189,7 @@ class ViewController: UIViewController, UITableViewDataSource, UITableViewDelega
         HEIGHT = self.view.frame.height
         WIDTH = self.view.frame.width
         
-        tbv.frame = CGRect(x: 0, y: 75, width: WIDTH, height: HEIGHT - 75)
-        tbv.separatorStyle = .none
-        tbv.register(DiningTableViewCell.self, forCellReuseIdentifier: "dining cell")
-        tbv.dataSource = self
-        tbv.delegate = self
-        self.view.addSubview(tbv)
-        
-        date_lb.frame = CGRect(x: 14, y: 63, width: 200, height: 15)
-        date_lb.font = UIFont(name: "Arial-BoldMT", size: 12)
-        date_lb.textColor = UIColor.greyishTwo
-        self.view.addSubview(date_lb)
-        
-        webv.frame = CGRect(x: 0, y: 0, width: WIDTH, height: HEIGHT)
-        
-        activityIndicator = UIActivityIndicatorView(style: .gray)
-        activityIndicator.frame = CGRect(x: 0, y: 0, width: 46, height: 46)
-        activityIndicator.center = self.view.center
-        
-        close_btn = UIButton()
-        close_btn.frame = CGRect(x: 15, y: 35, width: 35, height: 35)
-        close_btn.setTitle("x", for: .normal)
-        close_btn.setTitleColor(UIColor.white, for: .normal)
-        close_btn.titleLabel?.font = UIFont(name: "Arial-BoldMT", size: 20)
-        close_btn.backgroundColor = UIColor.lightGray
-        close_btn.alpha = 0.6
-        close_btn.addTarget(self, action: #selector(closeWebView), for: .touchUpInside)
-    }
-    
-    @objc func closeWebView() {
-        close_btn.removeFromSuperview()
-        webv.removeFromSuperview()
-        webv.load(URLRequest(url: URL(string:"about:blank")!))
-        activityIndicator.stopAnimating()
-        tbv.deselectRow(at: selectedIndexPath, animated: true)
-        UIView.animate(withDuration: 0.3) {
-            self.webv.alpha = 0
-            self.close_btn.alpha = 0
-        }
-    }
-}
-
-extension UIColor {
-    @nonobjc class var black: UIColor {
-        return UIColor(white: 31.0 / 255.0, alpha: 1.0)
-    }
-    @nonobjc class var azure: UIColor {
-        return UIColor(red: 32.0 / 255.0, green: 156.0 / 255.0, blue: 238.0 / 255.0, alpha: 1.0)
-    }
-    @nonobjc class var greyish: UIColor {
-        return UIColor(white: 169.0 / 255.0, alpha: 1.0)
-    }
-    @nonobjc class var greyishTwo: UIColor {
-        return UIColor(white: 164.0 / 255.0, alpha: 1.0)
-    }
-    @nonobjc class var warmGrey: UIColor {
-        return UIColor(white: 151.0 / 255.0, alpha: 1.0)
+        setUpUI()
     }
 }
 

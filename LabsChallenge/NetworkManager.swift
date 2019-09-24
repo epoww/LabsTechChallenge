@@ -10,7 +10,7 @@ import UIKit
 
 class NetworkManager {
     
-    //fetching image from url asynchronously
+    // fetching image from url asynchronously
     func getImage(url: URL, completionHandler: @escaping (UIImage) -> ()) {
         URLSession.shared.dataTask(with: url) { (data, response, error) in
             if error != nil {
@@ -27,8 +27,8 @@ class NetworkManager {
             }.resume()
     }
     
+    // fetching data from API and parsing JSON
     func getData(url: URL, completionHandler: @escaping ([DiningPlace], [DiningPlace]) -> ()) {
-        
         URLSession.shared.dataTask(with: url) { (data, response, error) in
             if let error = error {
                 print(error)
@@ -61,6 +61,6 @@ class NetworkManager {
             } else {
                 print("invalid JSON")
             }
-            }.resume()
+        }.resume()
     }
 }
